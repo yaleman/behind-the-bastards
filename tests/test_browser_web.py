@@ -2,6 +2,7 @@ import json
 
 from fastapi.testclient import TestClient
 
+from btb_browser.transcripts import compress_text, transcript_storage_path
 from btb_browser.web import create_app
 
 
@@ -165,7 +166,76 @@ def test_detail_page_renders_transcript_text(tmp_path):
     assert response.status_code == 200
     assert "1:00:00" in response.text
     assert "Transcript available" in response.text
+    assert 'class="transcript-cue"' in response.text
+    assert "00:00" in response.text
     assert "Transcript body" in response.text
+    assert "--&gt;" not in response.text
+    assert ">1<" not in response.text
+
+
+def test_detail_page_renders_speaker_labels_with_color_classes(tmp_path):
+    episodes_dir = tmp_path / "episodes"
+    transcripts_dir = tmp_path / "transcripts"
+    episodes_dir.mkdir()
+    transcripts_dir.mkdir()
+
+    write_episode(
+        episodes_dir / "70.json",
+        70,
+        title="Speaker Transcript Episode",
+        description="metadata",
+        transcriptionAvailable=True,
+    )
+    transcript_text = "\n".join(
+        [
+            "1",
+            "00:00:01,000 --> 00:00:02,000",
+            "Speaker 2: Hello there",
+            "",
+            "2",
+            "00:00:03,000 --> 00:00:04,000",
+            "Speaker 8: General Kenobi",
+            "",
+            "3",
+            "00:00:05,000 --> 00:00:06,000",
+            "Speaker 2: Back again",
+            "",
+        ]
+    )
+    (transcripts_dir / "70.srt").write_text(transcript_text, encoding="utf-8")
+
+    client = TestClient(create_app(tmp_path))
+    response = client.get("/episodes/70")
+
+    assert response.status_code == 200
+    assert "Speaker 2" in response.text
+    assert "Speaker 8" in response.text
+    assert response.text.count("speaker-color-1") >= 2
+    assert "speaker-color-2" in response.text
+
+
+def test_detail_page_falls_back_to_raw_transcript_for_unparseable_text(tmp_path):
+    episodes_dir = tmp_path / "episodes"
+    transcripts_dir = tmp_path / "transcripts"
+    episodes_dir.mkdir()
+    transcripts_dir.mkdir()
+
+    write_episode(
+        episodes_dir / "71.json",
+        71,
+        title="Fallback Transcript Episode",
+        description="metadata",
+        transcriptionAvailable=True,
+    )
+    transcript_text = "plain transcript without srt timing"
+    (transcripts_dir / "71.srt").write_text(transcript_text, encoding="utf-8")
+
+    client = TestClient(create_app(tmp_path))
+    response = client.get("/episodes/71")
+
+    assert response.status_code == 200
+    assert "<pre>plain transcript without srt timing</pre>" in response.text
+    assert 'class="transcript-cue"' not in response.text
 
 
 def test_detail_page_returns_404_for_unknown_episode(tmp_path):
@@ -255,3 +325,32 @@ def test_home_page_renders_description_html(tmp_path):
     assert 'href="https://example.com"' in response.text
     assert 'href="https://omnystudio.com/listener"' in response.text
     assert "&lt;p&gt;" not in response.text
+
+
+def test_detail_page_repairs_malformed_description_html(tmp_path):
+    episodes_dir = tmp_path / "episodes"
+    transcripts_dir = tmp_path / "transcripts"
+    episodes_dir.mkdir()
+    transcripts_dir.mkdir()
+
+    write_episode(
+        episodes_dir / "217093069.json",
+        217093069,
+        title="Broken HTML Episode",
+        description=(
+            "<p>Sources:</p>"
+            '<ol><li><a href="https://example.com/good">Good link</a></li>'
+            '<li><a href="https://example.com/broken'
+        ),
+        transcriptionAvailable=True,
+    )
+    transcript_storage_path(transcripts_dir, 217093069).write_bytes(compress_text("Speaker 1: Hello"))
+
+    client = TestClient(create_app(tmp_path))
+    response = client.get("/episodes/217093069")
+
+    assert response.status_code == 200
+    assert 'href="https://example.com/good"' in response.text
+    assert '<a href="https://example.com/broken' not in response.text
+    assert "Transcript available" in response.text
+    assert "Speaker 1: Hello" in response.text

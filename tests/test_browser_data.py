@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 
-from btb_browser.data import load_archive, paginate_results, search_records
+from btb_browser.data import load_archive, paginate_results, parse_transcript_cues, search_records
 
 
 def write_episode(path, episode_id, **overrides):
@@ -61,6 +61,8 @@ def test_load_archive_merges_episode_and_transcript_files(tmp_path):
     assert records[0].title == "Title Match"
     assert "Transcript body" in records[0].transcript_text
     assert "interesting metadata" in records[0].search_text
+    assert records[0].transcript_cues[0].start_time_display == "00:00"
+    assert records[0].transcript_cues[0].text == "Transcript body"
 
 
 def test_load_archive_sorts_newest_first_and_handles_missing_transcript(tmp_path):
@@ -193,3 +195,83 @@ def test_paginate_results_handles_nonpositive_page_size():
 
     assert page_items == [1]
     assert total_pages == 3
+
+
+def test_parse_transcript_cues_extracts_speaker_and_compact_time():
+    cues = parse_transcript_cues(
+        "\n".join(
+            [
+                "1",
+                "00:00:05,200 --> 00:00:07,000",
+                "Speaker 2: Hello there",
+                "",
+                "2",
+                "01:02:03,400 --> 01:02:07,000",
+                "Narrator: Another line",
+                "",
+            ]
+        )
+    )
+
+    assert [cue.start_time_display for cue in cues] == ["00:05", "1:02:03"]
+    assert cues[0].speaker_name == "Speaker 2"
+    assert cues[0].text == "Hello there"
+    assert cues[0].speaker_color_class == "speaker-color-1"
+    assert cues[1].speaker_name == "Narrator"
+    assert cues[1].speaker_color_class == "speaker-color-2"
+
+
+def test_parse_transcript_cues_reuses_color_for_repeat_speakers_in_first_seen_order():
+    cues = parse_transcript_cues(
+        "\n".join(
+            [
+                "1",
+                "00:00:01,000 --> 00:00:02,000",
+                "Speaker 3: First",
+                "",
+                "2",
+                "00:00:03,000 --> 00:00:04,000",
+                "Speaker 9: Second",
+                "",
+                "3",
+                "00:00:05,000 --> 00:00:06,000",
+                "Speaker 3: Third",
+                "",
+            ]
+        )
+    )
+
+    assert [cue.speaker_color_class for cue in cues] == [
+        "speaker-color-1",
+        "speaker-color-2",
+        "speaker-color-1",
+    ]
+
+
+def test_parse_transcript_cues_handles_missing_speaker_and_skips_bad_blocks():
+    cues = parse_transcript_cues(
+        "\n".join(
+            [
+                "1",
+                "00:00:01,000 --> 00:00:02,000",
+                "No speaker line here",
+                "",
+                "this block is malformed",
+                "",
+                "2",
+                "00:00:03,000 --> 00:00:04,000",
+                "Speaker 4: Valid line",
+                "",
+            ]
+        )
+    )
+
+    assert len(cues) == 2
+    assert cues[0].speaker_name is None
+    assert cues[0].speaker_color_class is None
+    assert cues[0].text == "No speaker line here"
+    assert cues[1].speaker_name == "Speaker 4"
+
+
+def test_parse_transcript_cues_returns_empty_for_unparseable_text():
+    assert parse_transcript_cues("plain transcript without srt timing") == []

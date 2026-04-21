@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from btb_browser.transcripts import (
-    legacy_transcript_path,
     read_transcript_text,
     transcript_storage_path,
     write_transcript_text_if_changed,

@@ -32,7 +32,23 @@
         {% if record.transcript_text %}
           <section class="transcript">
             <h2>Transcript</h2>
-            <pre>{{ record.transcript_text }}</pre>
+            {% if record.transcript_cues %}
+              <div class="transcript-cues">
+                {% for cue in record.transcript_cues %}
+                  <article class="transcript-cue">
+                    <p class="transcript-cue-time">{{ cue.start_time_display }}</p>
+                    <div class="transcript-cue-body">
+                      {% if cue.speaker_name %}
+                        <p class="transcript-speaker {{ cue.speaker_color_class }}">{{ cue.speaker_name }}</p>
+                      {% endif %}
+                      <p class="transcript-text">{{ cue.text }}</p>
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+            {% else %}
+              <pre>{{ record.transcript_text }}</pre>
+            {% endif %}
           </section>
         {% else %}
           <p class="empty">No transcript text available.</p>

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from urllib.parse import urlencode
+import re
+from html import escape
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urlencode, urlparse
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -13,6 +16,98 @@ from btb_browser.data import EpisodeRecord, load_archive, paginate_results, sear
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ARCHIVE_ROOT = PACKAGE_ROOT
+ALLOWED_DESCRIPTION_TAGS = {
+    "a",
+    "b",
+    "blockquote",
+    "br",
+    "code",
+    "em",
+    "i",
+    "li",
+    "ol",
+    "p",
+    "strong",
+    "ul",
+}
+VOID_DESCRIPTION_TAGS = {"br"}
+
+
+class _DescriptionHtmlRenderer(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self._parts: list[str] = []
+        self._open_tags: list[str] = []
+
+    def render(self, value: str) -> str:
+        self.feed(value)
+        self.close()
+        while self._open_tags:
+            self._parts.append(f"</{self._open_tags.pop()}>")
+        rendered = "".join(self._parts)
+        return re.sub(r"<li>\s*</li>", "", rendered)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag not in ALLOWED_DESCRIPTION_TAGS:
+            return
+        rendered_attrs = self._render_attrs(tag, attrs)
+        if tag == "a" and not rendered_attrs:
+            return
+        self._parts.append(f"<{tag}{rendered_attrs}>")
+        if tag not in VOID_DESCRIPTION_TAGS:
+            self._open_tags.append(tag)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag not in ALLOWED_DESCRIPTION_TAGS:
+            return
+        rendered_attrs = self._render_attrs(tag, attrs)
+        if tag == "a" and not rendered_attrs:
+            return
+        self._parts.append(f"<{tag}{rendered_attrs}>")
+        if tag in VOID_DESCRIPTION_TAGS:
+            self._parts[-1] = f"<{tag}{rendered_attrs}>"
+        else:
+            self._parts.append(f"</{tag}>")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag not in ALLOWED_DESCRIPTION_TAGS or tag in VOID_DESCRIPTION_TAGS:
+            return
+        for index in range(len(self._open_tags) - 1, -1, -1):
+            if self._open_tags[index] != tag:
+                continue
+            for closing_tag in reversed(self._open_tags[index:]):
+                self._parts.append(f"</{closing_tag}>")
+            del self._open_tags[index:]
+            return
+
+    def handle_data(self, data: str) -> None:
+        self._parts.append(escape(data))
+
+    def handle_entityref(self, name: str) -> None:
+        self._parts.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self._parts.append(f"&#{name};")
+
+    def handle_comment(self, data: str) -> None:
+        return
+
+    def _render_attrs(self, tag: str, attrs: list[tuple[str, str | None]]) -> str:
+        if tag != "a":
+            return ""
+        for key, value in attrs:
+            if key != "href" or not value:
+                continue
+            if not self._is_safe_href(value):
+                continue
+            escaped_value = escape(value, quote=True)
+            return f' href="{escaped_value}" rel="noopener noreferrer" target="_blank"'
+        return ""
+
+    @staticmethod
+    def _is_safe_href(value: str) -> bool:
+        parsed = urlparse(value)
+        return parsed.scheme in {"http", "https"}
 
 
 def _find_episode(records: list[EpisodeRecord], episode_id: int) -> EpisodeRecord | None:
@@ -50,7 +145,7 @@ def _page_url(request: Request, *, page: int, query: str) -> str:
 def _render_description_html(value: object) -> Markup:
     if not isinstance(value, str):
         return Markup("")
-    return Markup(value)
+    return Markup(_DescriptionHtmlRenderer().render(value))
 
 
 def create_app(

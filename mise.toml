@@ -1,0 +1,16 @@
+[tools]
+python = "3.14"
+uv = "latest"
+
+[tasks.start]
+run = "uv run uvicorn btb_browser.web:app --host 127.0.0.1 --port 8000"
+
+[tasks.ruff]
+run = "uv run ruff check"
+[tasks.ty]
+run = "uv run ty check"
+[tasks.test]
+run = "uv run pytest"
+
+[tasks.check]
+depends = ["ruff", "ty", "test"]

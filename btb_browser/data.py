@@ -13,6 +13,15 @@ from btb_browser.transcripts import read_transcript_text
 
 
 @dataclass(slots=True)
+class TranscriptCue:
+    start_time_raw: str
+    start_time_display: str
+    speaker_name: str | None
+    speaker_color_class: str | None
+    text: str
+
+
+@dataclass(slots=True)
 class EpisodeRecord:
     id: int
     title: str
@@ -23,12 +32,24 @@ class EpisodeRecord:
     podcast_slug: str
     transcription_available: bool
     transcript_text: str
+    transcript_cues: list[TranscriptCue]
     raw_episode: dict[str, Any]
     search_text: str
     score: int = 0
 
 
 _WHITESPACE_RE = re.compile(r"\s+")
+_SRT_BLOCK_SPLIT_RE = re.compile(r"\n\s*\n")
+_SRT_TIME_RE = re.compile(r"^(?P<hours>\d{2}):(?P<minutes>\d{2}):(?P<seconds>\d{2})(?:[,\.](?P<millis>\d{3}))?$")
+_SPEAKER_PREFIX_RE = re.compile(r"^(?P<speaker>[A-Za-z][A-Za-z0-9 .&'()_-]{0,60}?):\s*(?P<text>.+)$")
+_SPEAKER_COLOR_CLASSES = (
+    "speaker-color-1",
+    "speaker-color-2",
+    "speaker-color-3",
+    "speaker-color-4",
+    "speaker-color-5",
+    "speaker-color-6",
+)
 
 
 class _DescriptionHTMLStripper(HTMLParser):
@@ -101,7 +122,82 @@ def _normalize_start_date(value: Any) -> str:
     return str(value)
 
 
+def _format_transcript_start_time(value: str) -> str | None:
+    match = _SRT_TIME_RE.match(value.strip())
+    if match is None:
+        return None
+    hours = int(match.group("hours"))
+    minutes = int(match.group("minutes"))
+    seconds = int(match.group("seconds"))
+    if hours:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
+
+
+def _split_speaker_text(text: str) -> tuple[str | None, str]:
+    match = _SPEAKER_PREFIX_RE.match(text)
+    if match is None:
+        return None, text
+    speaker = match.group("speaker").strip()
+    spoken_text = match.group("text").strip()
+    if not spoken_text:
+        return None, text
+    return speaker, spoken_text
+
+
+def parse_transcript_cues(transcript_text: str) -> list[TranscriptCue]:
+    normalized_text = transcript_text.replace("\r\n", "\n").strip()
+    if not normalized_text:
+        return []
+
+    cues: list[TranscriptCue] = []
+    speaker_colors: dict[str, str] = {}
+    for block in _SRT_BLOCK_SPLIT_RE.split(normalized_text):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if len(lines) < 2:
+            continue
+
+        if "-->" in lines[0]:
+            timing_line = lines[0]
+            body_lines = lines[1:]
+        elif len(lines) >= 3 and lines[0].isdigit() and "-->" in lines[1]:
+            timing_line = lines[1]
+            body_lines = lines[2:]
+        else:
+            continue
+
+        start_time_raw = timing_line.partition("-->")[0].strip()
+        start_time_display = _format_transcript_start_time(start_time_raw)
+        if start_time_display is None:
+            continue
+
+        body_text = _WHITESPACE_RE.sub(" ", " ".join(body_lines)).strip()
+        if not body_text:
+            continue
+
+        speaker_name, text = _split_speaker_text(body_text)
+        speaker_color_class = None
+        if speaker_name is not None:
+            speaker_color_class = speaker_colors.setdefault(
+                speaker_name,
+                _SPEAKER_COLOR_CLASSES[len(speaker_colors) % len(_SPEAKER_COLOR_CLASSES)],
+            )
+
+        cues.append(
+            TranscriptCue(
+                start_time_raw=start_time_raw,
+                start_time_display=start_time_display,
+                speaker_name=speaker_name,
+                speaker_color_class=speaker_color_class,
+                text=text,
+            )
+        )
+
+    return cues
+
+
 def normalize_episode(raw_episode: dict[str, Any], transcript_text: str) -> EpisodeRecord:
+    transcript_cues = parse_transcript_cues(transcript_text)
     return EpisodeRecord(
         id=int(raw_episode["id"]),
         title=raw_episode.get("title", ""),
@@ -112,6 +208,7 @@ def normalize_episode(raw_episode: dict[str, Any], transcript_text: str) -> Epis
         podcast_slug=raw_episode.get("podcastSlug", ""),
         transcription_available=bool(raw_episode.get("transcriptionAvailable")),
         transcript_text=transcript_text,
+        transcript_cues=transcript_cues,
         raw_episode=raw_episode,
         search_text=_build_search_text(raw_episode, transcript_text),
     )

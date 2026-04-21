@@ -159,6 +159,83 @@ button:hover {
   font-size: 1rem;
 }
 
+.transcript-cues {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.transcript-cue {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+  padding: 0.85rem 0.95rem;
+  background: #f8f2e8;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.9rem;
+}
+
+.transcript-cue-time {
+  margin: 0;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.transcript-cue-body {
+  min-width: 0;
+}
+
+.transcript-speaker,
+.transcript-text {
+  margin: 0;
+}
+
+.transcript-speaker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.transcript-text {
+  color: var(--text);
+}
+
+.speaker-color-1 {
+  color: #7a271a;
+  background: #f9d8cb;
+}
+
+.speaker-color-2 {
+  color: #0f5f66;
+  background: #d7f0f2;
+}
+
+.speaker-color-3 {
+  color: #5c3f0d;
+  background: #f6e3bd;
+}
+
+.speaker-color-4 {
+  color: #204d2a;
+  background: #d7ecd7;
+}
+
+.speaker-color-5 {
+  color: #5a275f;
+  background: #f0d8f4;
+}
+
+.speaker-color-6 {
+  color: #1b456e;
+  background: #d8e9fb;
+}
+
 pre {
   margin: 0;
   overflow-x: auto;
@@ -215,5 +292,10 @@ pre {
   .episode-card,
   .detail-card {
     padding: 0.9rem;
+  }
+
+  .transcript-cue {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
   }
 }

@@ -16,6 +16,28 @@ Run the archive job with:
 uv run python scripts/archive_btb.py
 ```
 
+Or via `mise`:
+
+```bash
+mise run update-dataset
+```
+
+## Container
+
+Build the app container with:
+
+```bash
+docker build -t behind-the-bastards .
+```
+
+Run it with:
+
+```bash
+docker run --rm -p 8000:8000 behind-the-bastards
+```
+
+The image includes the archived `episodes/` and `transcripts/` directories, so the browser UI is ready to serve immediately.
+
 ## Browser UI
 
 Start the local browser app with:
@@ -52,3 +74,10 @@ The scraper compares fetched content with existing files and only rewrites files
 ## Transcript Caveat
 
 Some episodes report transcript support, but the episode page may still fail to expose a usable transcript link or transcript fetches may fail. In those cases the script keeps the episode JSON file, records the transcript issue in its summary, and continues.
+
+## Container Publishing
+
+Pushes to `main` trigger `.github/workflows/publish-container.yml`, which uses Docker's maintained reusable workflow from [`docker/github-builder`](https://github.com/docker/github-builder) to build and publish a multi-arch image for `linux/amd64` and `linux/arm64` to GHCR as:
+
+- `ghcr.io/<owner>/<repo>:latest`
+- `ghcr.io/<owner>/<repo>:sha-<short-commit>`

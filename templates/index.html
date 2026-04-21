@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Behind the Bastards Browser</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <h1>Behind the Bastards Browser</h1>
+        <form class="search" method="get" action="/">
+          <label class="search-label" for="q">Search episodes</label>
+          <div class="search-row">
+            <input id="q" name="q" type="search" value="{{ query }}" placeholder="Search title, description, transcript">
+            <button type="submit">Search</button>
+          </div>
+        </form>
+      </header>
+
+      <section class="summary" aria-live="polite">
+        <strong>{{ total_records }}</strong> episodes
+        {% if query %}
+          for <code>{{ query }}</code>
+        {% endif %}
+      </section>
+
+      <section>
+        <ul class="episode-list">
+          {% for record in records %}
+            <li class="episode-card">
+              <a class="episode-title" href="/episodes/{{ record.id }}">{{ record.title }}</a>
+              <div class="episode-meta">
+                <time datetime="{{ record.start_date }}">{{ record.start_date }}</time>
+                {% if record.duration is not none %}
+                  <span>{{ format_duration(record.duration) }}</span>
+                {% endif %}
+              </div>
+              {% if record.raw_episode.get("description") %}
+                <div class="episode-description">{{ render_description_html(record.raw_episode.get("description")) }}</div>
+              {% endif %}
+            </li>
+          {% else %}
+            <li class="empty">No episodes found.</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      {% if total_pages > 1 %}
+        <nav class="pagination" aria-label="Pagination">
+          <span>Page {{ page }} of {{ total_pages }}</span>
+          <div class="pagination-links">
+            {% if has_previous %}
+              <a href="{{ previous_page_url }}">Previous</a>
+            {% endif %}
+            {% if has_next %}
+              <a href="{{ next_page_url }}">Next</a>
+            {% endif %}
+          </div>
+        </nav>
+      {% endif %}
+    </main>
+  </body>
+</html>

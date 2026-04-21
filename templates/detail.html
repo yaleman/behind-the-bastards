@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ record.title }} - Behind the Bastards Browser</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+  </head>
+  <body>
+    <main class="shell detail">
+      <p class="back-link"><a href="/">All episodes</a></p>
+      <article class="detail-card">
+        <header class="detail-header">
+          <h1>{{ record.title }}</h1>
+          <div class="episode-meta">
+            <time datetime="{{ record.start_date }}">{{ record.start_date }}</time>
+            {% if record.duration is not none %}
+              <span>{{ format_duration(record.duration) }}</span>
+            {% endif %}
+          </div>
+        </header>
+
+        {% if record.raw_episode.get("description") %}
+          <div class="detail-description">{{ render_description_html(record.raw_episode.get("description")) }}</div>
+        {% endif %}
+
+        <section class="detail-state">
+          <h2>Transcript status</h2>
+          <p>{% if record.transcription_available %}Transcript available{% else %}Transcript unavailable{% endif %}</p>
+        </section>
+
+        {% if record.transcript_text %}
+          <section class="transcript">
+            <h2>Transcript</h2>
+            <pre>{{ record.transcript_text }}</pre>
+          </section>
+        {% else %}
+          <p class="empty">No transcript text available.</p>
+        {% endif %}
+
+        <section class="raw-metadata">
+          <h2>Raw metadata</h2>
+          <dl>
+            {% for key, value in record.raw_episode.items() %}
+              <div>
+                <dt>{{ key }}</dt>
+                {% if key == "description" %}
+                  <dd>{{ render_description_html(value) }}</dd>
+                {% else %}
+                  <dd>{{ value }}</dd>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </dl>
+        </section>
+      </article>
+    </main>
+  </body>
+</html>

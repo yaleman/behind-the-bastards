@@ -248,6 +248,35 @@ def test_parse_transcript_cues_reuses_color_for_repeat_speakers_in_first_seen_or
     ]
 
 
+def test_parse_transcript_cues_collapses_consecutive_cues_from_same_speaker():
+    cues = parse_transcript_cues(
+        "\n".join(
+            [
+                "1",
+                "00:00:01,000 --> 00:00:02,000",
+                "Speaker 2: Hello there",
+                "",
+                "2",
+                "00:00:03,000 --> 00:00:04,000",
+                "Speaker 2: General Kenobi",
+                "",
+                "3",
+                "00:00:05,000 --> 00:00:06,000",
+                "Speaker 8: Different person",
+                "",
+            ]
+        )
+    )
+
+    assert len(cues) == 2
+    assert cues[0].start_time_display == "00:01"
+    assert cues[0].speaker_name == "Speaker 2"
+    assert cues[0].speaker_color_class == "speaker-color-1"
+    assert cues[0].text == "Hello there General Kenobi"
+    assert cues[1].speaker_name == "Speaker 8"
+    assert cues[1].speaker_color_class == "speaker-color-2"
+
+
 def test_parse_transcript_cues_handles_missing_speaker_and_skips_bad_blocks():
     cues = parse_transcript_cues(
         "\n".join(

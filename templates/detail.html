@@ -36,8 +36,8 @@
               <div class="transcript-cues">
                 {% for cue in record.transcript_cues %}
                   <article class="transcript-cue">
-                    <p class="transcript-cue-time">{{ cue.start_time_display }}</p>
-                    <div class="transcript-cue-body">
+                    <div class="transcript-cue-line">
+                      <p class="transcript-cue-time">{{ cue.start_time_display }}</p>
                       {% if cue.speaker_name %}
                         <p class="transcript-speaker {{ cue.speaker_color_class }}">{{ cue.speaker_name }}</p>
                       {% endif %}

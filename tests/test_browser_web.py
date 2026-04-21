@@ -167,6 +167,7 @@ def test_detail_page_renders_transcript_text(tmp_path):
     assert "1:00:00" in response.text
     assert "Transcript available" in response.text
     assert 'class="transcript-cue"' in response.text
+    assert 'class="transcript-cue-line"' in response.text
     assert "00:00" in response.text
     assert "Transcript body" in response.text
     assert "--&gt;" not in response.text
@@ -194,10 +195,14 @@ def test_detail_page_renders_speaker_labels_with_color_classes(tmp_path):
             "",
             "2",
             "00:00:03,000 --> 00:00:04,000",
-            "Speaker 8: General Kenobi",
+            "Speaker 2: General Kenobi",
             "",
             "3",
             "00:00:05,000 --> 00:00:06,000",
+            "Speaker 8: General Kenobi",
+            "",
+            "4",
+            "00:00:07,000 --> 00:00:08,000",
             "Speaker 2: Back again",
             "",
         ]
@@ -210,6 +215,7 @@ def test_detail_page_renders_speaker_labels_with_color_classes(tmp_path):
     assert response.status_code == 200
     assert "Speaker 2" in response.text
     assert "Speaker 8" in response.text
+    assert "Hello there General Kenobi" in response.text
     assert response.text.count("speaker-color-1") >= 2
     assert "speaker-color-2" in response.text
 

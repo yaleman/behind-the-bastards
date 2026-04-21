@@ -183,6 +183,12 @@ def parse_transcript_cues(transcript_text: str) -> list[TranscriptCue]:
                 _SPEAKER_COLOR_CLASSES[len(speaker_colors) % len(_SPEAKER_COLOR_CLASSES)],
             )
 
+        if cues and speaker_name is not None:
+            previous_cue = cues[-1]
+            if previous_cue.speaker_name == speaker_name:
+                previous_cue.text = f"{previous_cue.text} {text}".strip()
+                continue
+
         cues.append(
             TranscriptCue(
                 start_time_raw=start_time_raw,

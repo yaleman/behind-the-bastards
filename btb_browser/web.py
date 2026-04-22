@@ -142,6 +142,43 @@ def _page_url(request: Request, *, page: int, query: str) -> str:
     return f"{request.url.path}?{urlencode(params)}"
 
 
+def _pagination_window(current_page: int, total_pages: int) -> list[int | None]:
+    if total_pages <= 1:
+        return []
+
+    window_start = max(1, current_page - 2)
+    window_end = min(total_pages, current_page + 2)
+    pages: list[int | None] = [1]
+    if window_start > 2:
+        pages.append(None)
+    for page_number in range(window_start, window_end + 1):
+        if page_number in {1, total_pages}:
+            continue
+        pages.append(page_number)
+    if window_end < total_pages - 1:
+        pages.append(None)
+    if total_pages > 1:
+        pages.append(total_pages)
+    return pages
+
+
+def _build_pagination_items(request: Request, *, page: int, total_pages: int, query: str) -> list[dict[str, object]]:
+    items: list[dict[str, object]] = []
+    for entry in _pagination_window(page, total_pages):
+        if entry is None:
+            items.append({"label": "…", "is_gap": True, "is_current": False, "url": ""})
+            continue
+        items.append(
+            {
+                "label": str(entry),
+                "is_gap": False,
+                "is_current": entry == page,
+                "url": "" if entry == page else _page_url(request, page=entry, query=query),
+            }
+        )
+    return items
+
+
 def _render_description_html(value: object) -> Markup:
     if not isinstance(value, str):
         return Markup("")
@@ -172,6 +209,12 @@ def create_app(
         effective_page = max(1, min(page, total_pages))
         has_previous = effective_page > 1
         has_next = effective_page < total_pages
+        pagination_items = _build_pagination_items(
+            request,
+            page=effective_page,
+            total_pages=total_pages,
+            query=q,
+        )
         return templates.TemplateResponse(
             request,
             "index.html",
@@ -183,6 +226,9 @@ def create_app(
                 "total_pages": total_pages,
                 "has_previous": has_previous,
                 "has_next": has_next,
+                "pagination_items": pagination_items,
+                "first_page_url": _page_url(request, page=1, query=q) if has_previous else "",
+                "last_page_url": _page_url(request, page=total_pages, query=q) if has_next else "",
                 "previous_page_url": _page_url(request, page=effective_page - 1, query=q) if has_previous else "",
                 "next_page_url": _page_url(request, page=effective_page + 1, query=q) if has_next else "",
                 "format_duration": _format_duration,

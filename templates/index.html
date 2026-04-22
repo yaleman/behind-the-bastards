@@ -7,6 +7,38 @@
     <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
   </head>
   <body>
+    {% macro pagination_nav(page, total_pages, has_previous, has_next, first_page_url, previous_page_url, next_page_url, last_page_url, pagination_items) -%}
+      <nav class="pagination" aria-label="Pagination">
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        <div class="pagination-links">
+          {% if has_previous %}
+            <a href="{{ first_page_url }}">First</a>
+            <a href="{{ previous_page_url }}">Previous</a>
+          {% else %}
+            <span class="pagination-disabled">First</span>
+            <span class="pagination-disabled">Previous</span>
+          {% endif %}
+
+          {% for item in pagination_items %}
+            {% if item.is_gap %}
+              <span class="pagination-gap">…</span>
+            {% elif item.is_current %}
+              <span aria-current="page" class="pagination-current">{{ item.label }}</span>
+            {% else %}
+              <a href="{{ item.url }}">{{ item.label }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if has_next %}
+            <a href="{{ next_page_url }}">Next</a>
+            <a href="{{ last_page_url }}">Last</a>
+          {% else %}
+            <span class="pagination-disabled">Next</span>
+            <span class="pagination-disabled">Last</span>
+          {% endif %}
+        </div>
+      </nav>
+    {%- endmacro %}
     <main class="shell">
       <header class="topbar">
         <h1>Behind the Bastards Browser</h1>
@@ -25,6 +57,10 @@
           for <code>{{ query }}</code>
         {% endif %}
       </section>
+
+      {% if total_pages > 1 %}
+        {{ pagination_nav(page, total_pages, has_previous, has_next, first_page_url, previous_page_url, next_page_url, last_page_url, pagination_items) }}
+      {% endif %}
 
       <section>
         <ul class="episode-list">
@@ -48,17 +84,7 @@
       </section>
 
       {% if total_pages > 1 %}
-        <nav class="pagination" aria-label="Pagination">
-          <span>Page {{ page }} of {{ total_pages }}</span>
-          <div class="pagination-links">
-            {% if has_previous %}
-              <a href="{{ previous_page_url }}">Previous</a>
-            {% endif %}
-            {% if has_next %}
-              <a href="{{ next_page_url }}">Next</a>
-            {% endif %}
-          </div>
-        </nav>
+        {{ pagination_nav(page, total_pages, has_previous, has_next, first_page_url, previous_page_url, next_page_url, last_page_url, pagination_items) }}
       {% endif %}
     </main>
   </body>

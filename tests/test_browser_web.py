@@ -65,10 +65,46 @@ def test_home_page_renders_duration_excerpt_and_pagination_controls(tmp_path):
 
     assert response.status_code == 200
     assert "Page 2 of 2" in response.text
-    assert "Previous" in response.text
-    assert "Next" not in response.text
+    assert response.text.count('aria-label="Pagination"') == 2
+    assert response.text.count("Previous") == 2
+    assert response.text.count("First") == 2
+    assert response.text.count("Last") == 2
+    assert response.text.count('aria-current="page"') == 2
+    assert response.text.count(">2<") >= 2
+    assert response.text.count('class="pagination-disabled">Next</span>') == 2
+    assert response.text.count('class="pagination-disabled">Last</span>') == 2
     assert "2:00" in response.text
     assert "This is a longer description that should be excerpted" in response.text
+
+
+def test_home_page_renders_numbered_pagination_window_for_search_results(tmp_path):
+    episodes_dir = tmp_path / "episodes"
+    transcripts_dir = tmp_path / "transcripts"
+    episodes_dir.mkdir()
+    transcripts_dir.mkdir()
+
+    for episode_id in range(1, 241):
+        write_episode(
+            episodes_dir / f"{episode_id}.json",
+            episode_id,
+            title=f"Episode {episode_id}",
+            description="search target",
+            startDate=f"2026-01-{(episode_id % 28) + 1:02d}T00:00:00Z",
+        )
+
+    client = TestClient(create_app(tmp_path))
+    response = client.get("/", params={"q": "search", "page": 6})
+
+    assert response.status_code == 200
+    assert response.text.count('aria-label="Pagination"') == 2
+    assert response.text.count('href="/?page=1&amp;q=search"') >= 2
+    assert response.text.count('href="/?page=4&amp;q=search"') >= 2
+    assert response.text.count('aria-current="page"') == 2
+    assert response.text.count(">6<") >= 2
+    assert response.text.count('href="/?page=5&amp;q=search"') >= 2
+    assert response.text.count('href="/?page=7&amp;q=search"') >= 2
+    assert response.text.count('href="/?page=10&amp;q=search"') >= 2
+    assert response.text.count(">…<") >= 2
 
 
 def test_home_page_lists_newest_first_without_query(tmp_path):

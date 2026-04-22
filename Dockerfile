@@ -7,12 +7,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-RUN python -m pip install --no-cache-dir uv==0.8.22
+# RUN python -m pip install --no-cache-dir uv==0.8.22
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
-
 COPY README.md ./
+
 COPY btb_browser ./btb_browser
 COPY episodes ./episodes
 COPY scripts ./scripts
@@ -20,14 +19,13 @@ COPY static ./static
 COPY templates ./templates
 COPY transcripts ./transcripts
 
-RUN uv sync --frozen --no-dev
-
 RUN useradd --create-home --shell /usr/sbin/nologin appuser && \
     chown -R appuser:appuser /app
 
 USER appuser
+RUN pip install --no-cache --user .
 
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/home/appuser/.local/bin:$PATH"
 
 EXPOSE 8000
 

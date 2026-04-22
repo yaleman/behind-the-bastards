@@ -1,8 +1,10 @@
 import importlib.util
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from btb_browser.data import load_archive
+from btb_browser.transcripts import compress_text, decompress_text
 
 
 def load_module(path: Path, name: str):
@@ -72,3 +74,13 @@ def test_migration_script_converts_legacy_srt_files(tmp_path):
     records = load_archive(episodes_dir, transcripts_dir)
 
     assert records[0].transcript_text == "1\n00:00:00,000 --> 00:00:01,000\nTranscript body\n"
+
+
+def test_decompress_text_supports_concurrent_reads():
+    expected = "Transcript body\n" * 1000
+    payload = compress_text(expected)
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(decompress_text, [payload] * 32))
+
+    assert results == [expected] * 32

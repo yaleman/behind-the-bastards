@@ -1,7 +1,9 @@
 import json
+import logging
 
 from fastapi.testclient import TestClient
 
+import btb_browser.web as browser_web
 from btb_browser.transcripts import compress_text, transcript_storage_path
 from btb_browser.web import create_app
 
@@ -19,6 +21,26 @@ def write_episode(path, episode_id, **overrides):
     }
     payload.update(overrides)
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_create_app_logs_before_and_after_initial_archive_load(tmp_path, monkeypatch, caplog):
+    episodes_dir = tmp_path / "episodes"
+    transcripts_dir = tmp_path / "transcripts"
+    episodes_dir.mkdir()
+    transcripts_dir.mkdir()
+
+    def fake_load_archive(episodes_path, transcripts_path):
+        assert episodes_path == episodes_dir
+        assert transcripts_path == transcripts_dir
+        return []
+
+    monkeypatch.setattr(browser_web, "load_archive", fake_load_archive)
+
+    with caplog.at_level(logging.INFO, logger="btb_browser.web"):
+        browser_web.create_app(tmp_path)
+
+    assert "Starting initial archive load" in caplog.text
+    assert "Finished initial archive load with 0 records" in caplog.text
 
 
 def test_home_page_clamps_out_of_range_page_in_pagination_ui(tmp_path):

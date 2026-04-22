@@ -11,6 +11,9 @@ dependencies = [
     "uvicorn>=0.44.0",
 ]
 
+[project.scripts]
+behind-the-bastards = "btb_browser.__main__:main"
+
 [dependency-groups]
 dev = [
     "playwright>=1.58.0",

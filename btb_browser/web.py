@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from html import escape
 from html.parser import HTMLParser
@@ -14,6 +15,7 @@ from markupsafe import Markup
 
 from btb_browser.data import EpisodeRecord, load_archive, paginate_results, search_records
 
+LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ARCHIVE_ROOT = PACKAGE_ROOT
 ALLOWED_DESCRIPTION_TAGS = {
@@ -194,7 +196,9 @@ def create_app(
     root = Path(archive_root)
     resolved_episodes_dir = episodes_dir or root / "episodes"
     resolved_transcripts_dir = transcripts_dir or root / "transcripts"
+    LOGGER.info("Starting initial archive load")
     records = load_archive(resolved_episodes_dir, resolved_transcripts_dir)
+    LOGGER.info("Finished initial archive load with %s records", len(records))
 
     app = FastAPI()
     templates = Jinja2Templates(directory=str(PACKAGE_ROOT / "templates"))

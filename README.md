@@ -43,10 +43,15 @@ The image includes the archived `episodes/` and `transcripts/` directories, so t
 Start the local browser app with:
 
 ```bash
-uv run uvicorn btb_browser.web:app --reload
+uv run behind-the-bastards --debug
 ```
 
 Then open <http://127.0.0.1:8000>.
+
+The browser command accepts:
+- `--host` to change the bind address
+- `--port` to change the listen port
+- `--debug` to enable Uvicorn reload mode with debug logging
 
 Install the WebKit browser runtime once before running the browser smoke tests:
 

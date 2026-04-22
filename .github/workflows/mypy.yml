@@ -19,4 +19,4 @@ jobs:
           github-token: ${{ github.token }}
       - name: Running mypy
         run: |
-          uv run mypy --strict $(basename $(pwd) | sed -E 's/-/_/g') tests/
+          uv run ty check

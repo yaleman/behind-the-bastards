@@ -19,4 +19,4 @@ jobs:
           github-token: ${{ github.token }}
       - name: Running pytest
         run: |
-          uv run python -m pytest
+          uv run pytest

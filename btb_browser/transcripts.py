@@ -1,14 +1,11 @@
 from __future__ import annotations
 
+import compression.zstd as zstd
 from pathlib import Path
-
-import zstandard as zstd
 
 TRANSCRIPT_SUFFIX = ".srt.zst"
 LEGACY_TRANSCRIPT_SUFFIX = ".srt"
-
-_COMPRESSOR = zstd.ZstdCompressor(level=3)
-_DECOMPRESSOR = zstd.ZstdDecompressor()
+_COMPRESSION_LEVEL = 3
 
 
 def transcript_storage_path(transcripts_dir: Path, episode_id: int | str) -> Path:
@@ -20,11 +17,11 @@ def legacy_transcript_path(transcripts_dir: Path, episode_id: int | str) -> Path
 
 
 def compress_text(content: str) -> bytes:
-    return _COMPRESSOR.compress(content.encode("utf-8"))
+    return zstd.compress(content.encode("utf-8"), level=_COMPRESSION_LEVEL)
 
 
 def decompress_text(content: bytes) -> str:
-    return _DECOMPRESSOR.decompress(content).decode("utf-8")
+    return zstd.decompress(content).decode("utf-8")
 
 
 def read_transcript_text(transcripts_dir: Path, episode_id: int | str) -> str:

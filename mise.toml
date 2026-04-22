@@ -3,7 +3,7 @@ python = "3.14"
 uv = "latest"
 
 [tasks.start]
-run = "uv run uvicorn btb_browser.web:app --host 127.0.0.1 --port 8000"
+run = "uv run behind-the-bastards --host 127.0.0.1 --port 8000"
 
 [tasks.update-dataset]
 run = "uv run python scripts/archive_btb.py"

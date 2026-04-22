@@ -20,6 +20,8 @@ COPY static ./static
 COPY templates ./templates
 COPY transcripts ./transcripts
 
+RUN uv sync --frozen --no-dev
+
 RUN useradd --create-home --shell /usr/sbin/nologin appuser && \
     chown -R appuser:appuser /app
 
@@ -29,4 +31,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
-CMD ["uvicorn", "btb_browser.web:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["behind-the-bastards", "--host", "0.0.0.0", "--port", "8000"]

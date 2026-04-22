@@ -1,6 +1,8 @@
 import json
+import threading
 from datetime import datetime, timezone
 
+import btb_browser.data as browser_data
 from btb_browser.data import load_archive, paginate_results, parse_transcript_cues, search_records
 
 
@@ -78,6 +80,42 @@ def test_load_archive_sorts_newest_first_and_handles_missing_transcript(tmp_path
 
     assert [record.id for record in records] == [2, 1]
     assert records[0].transcript_text == ""
+
+
+def test_load_archive_loads_episodes_serially(tmp_path, monkeypatch):
+    episodes_dir = tmp_path / "episodes"
+    transcripts_dir = tmp_path / "transcripts"
+    episodes_dir.mkdir()
+    transcripts_dir.mkdir()
+
+    for episode_id in range(1, 5):
+        write_episode(
+            episodes_dir / f"{episode_id}.json",
+            episode_id,
+            startDate=f"2026-01-0{episode_id}T00:00:00Z",
+        )
+
+    thread_ids: set[int] = set()
+    thread_ids_lock = threading.Lock()
+    barrier = threading.Barrier(2)
+    original_normalize_episode = browser_data.normalize_episode
+
+    def tracking_normalize_episode(raw_episode, transcript_text):
+        with thread_ids_lock:
+            thread_ids.add(threading.get_ident())
+        if raw_episode["id"] in {1, 2}:
+            try:
+                barrier.wait(timeout=0.2)
+            except threading.BrokenBarrierError:
+                pass
+        return original_normalize_episode(raw_episode, transcript_text)
+
+    monkeypatch.setattr(browser_data, "normalize_episode", tracking_normalize_episode)
+
+    records = browser_data.load_archive(episodes_dir, transcripts_dir)
+
+    assert [record.id for record in records] == [4, 3, 2, 1]
+    assert len(thread_ids) == 1
 
 
 def test_search_records_keeps_title_hits_ahead_of_larger_lower_priority_matches(tmp_path):

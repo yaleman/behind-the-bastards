@@ -1,7 +1,9 @@
 import json
+import logging
 
 from fastapi.testclient import TestClient
 
+import btb_browser.web as browser_web
 from btb_browser.transcripts import compress_text, transcript_storage_path
 from btb_browser.web import create_app
 
@@ -19,6 +21,26 @@ def write_episode(path, episode_id, **overrides):
     }
     payload.update(overrides)
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_create_app_logs_before_and_after_initial_archive_load(tmp_path, monkeypatch, caplog):
+    episodes_dir = tmp_path / "episodes"
+    transcripts_dir = tmp_path / "transcripts"
+    episodes_dir.mkdir()
+    transcripts_dir.mkdir()
+
+    def fake_load_archive(episodes_path, transcripts_path):
+        assert episodes_path == episodes_dir
+        assert transcripts_path == transcripts_dir
+        return []
+
+    monkeypatch.setattr(browser_web, "load_archive", fake_load_archive)
+
+    with caplog.at_level(logging.INFO, logger="btb_browser.web"):
+        browser_web.create_app(tmp_path)
+
+    assert "Starting initial archive load" in caplog.text
+    assert "Finished initial archive load with 0 records" in caplog.text
 
 
 def test_home_page_clamps_out_of_range_page_in_pagination_ui(tmp_path):
@@ -65,10 +87,46 @@ def test_home_page_renders_duration_excerpt_and_pagination_controls(tmp_path):
 
     assert response.status_code == 200
     assert "Page 2 of 2" in response.text
-    assert "Previous" in response.text
-    assert "Next" not in response.text
+    assert response.text.count('aria-label="Pagination"') == 2
+    assert response.text.count("Previous") == 2
+    assert response.text.count("First") == 2
+    assert response.text.count("Last") == 2
+    assert response.text.count('aria-current="page"') == 2
+    assert response.text.count(">2<") >= 2
+    assert response.text.count('class="pagination-disabled">Next</span>') == 2
+    assert response.text.count('class="pagination-disabled">Last</span>') == 2
     assert "2:00" in response.text
     assert "This is a longer description that should be excerpted" in response.text
+
+
+def test_home_page_renders_numbered_pagination_window_for_search_results(tmp_path):
+    episodes_dir = tmp_path / "episodes"
+    transcripts_dir = tmp_path / "transcripts"
+    episodes_dir.mkdir()
+    transcripts_dir.mkdir()
+
+    for episode_id in range(1, 241):
+        write_episode(
+            episodes_dir / f"{episode_id}.json",
+            episode_id,
+            title=f"Episode {episode_id}",
+            description="search target",
+            startDate=f"2026-01-{(episode_id % 28) + 1:02d}T00:00:00Z",
+        )
+
+    client = TestClient(create_app(tmp_path))
+    response = client.get("/", params={"q": "search", "page": 6})
+
+    assert response.status_code == 200
+    assert response.text.count('aria-label="Pagination"') == 2
+    assert response.text.count('href="/?page=1&amp;q=search"') >= 2
+    assert response.text.count('href="/?page=4&amp;q=search"') >= 2
+    assert response.text.count('aria-current="page"') == 2
+    assert response.text.count(">6<") >= 2
+    assert response.text.count('href="/?page=5&amp;q=search"') >= 2
+    assert response.text.count('href="/?page=7&amp;q=search"') >= 2
+    assert response.text.count('href="/?page=10&amp;q=search"') >= 2
+    assert response.text.count(">…<") >= 2
 
 
 def test_home_page_lists_newest_first_without_query(tmp_path):
@@ -165,7 +223,8 @@ def test_detail_page_renders_transcript_text(tmp_path):
 
     assert response.status_code == 200
     assert "1:00:00" in response.text
-    assert "Transcript available" in response.text
+    assert "Transcript status" not in response.text
+    assert "Transcript available" not in response.text
     assert 'class="transcript-cue"' in response.text
     assert 'class="transcript-cue-line"' in response.text
     assert "00:00" in response.text
@@ -275,7 +334,10 @@ def test_detail_page_shows_absent_transcript_state_and_raw_metadata(tmp_path):
 
     assert response.status_code == 200
     assert "No transcript text available." in response.text
-    assert "Transcript unavailable" in response.text
+    assert '<details class="raw-metadata">' in response.text
+    assert "<summary>Raw metadata</summary>" in response.text
+    assert "Transcript status" not in response.text
+    assert "Transcript unavailable" not in response.text
     assert "guests" in response.text
 
 
@@ -358,5 +420,6 @@ def test_detail_page_repairs_malformed_description_html(tmp_path):
     assert response.status_code == 200
     assert 'href="https://example.com/good"' in response.text
     assert '<a href="https://example.com/broken' not in response.text
-    assert "Transcript available" in response.text
+    assert "Transcript status" not in response.text
+    assert "Transcript available" not in response.text
     assert "Speaker 1: Hello" in response.text

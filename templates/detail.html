@@ -24,11 +24,6 @@
           <div class="detail-description">{{ render_description_html(record.raw_episode.get("description")) }}</div>
         {% endif %}
 
-        <section class="detail-state">
-          <h2>Transcript status</h2>
-          <p>{% if record.transcription_available %}Transcript available{% else %}Transcript unavailable{% endif %}</p>
-        </section>
-
         {% if record.transcript_text %}
           <section class="transcript">
             <h2>Transcript</h2>
@@ -54,8 +49,8 @@
           <p class="empty">No transcript text available.</p>
         {% endif %}
 
-        <section class="raw-metadata">
-          <h2>Raw metadata</h2>
+        <details class="raw-metadata">
+          <summary>Raw metadata</summary>
           <dl>
             {% for key, value in record.raw_episode.items() %}
               <div>
@@ -68,7 +63,7 @@
               </div>
             {% endfor %}
           </dl>
-        </section>
+        </details>
       </article>
     </main>
   </body>

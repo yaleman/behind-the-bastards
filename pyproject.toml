@@ -9,11 +9,18 @@ dependencies = [
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "uvicorn>=0.44.0",
-    "zstandard>=0.25.0",
 ]
 
+[project.scripts]
+behind-the-bastards = "btb_browser.__main__:main"
+
 [dependency-groups]
-dev = ["pytest>=9.0.3", "ruff>=0.15.11", "ty>=0.0.31"]
+dev = [
+    "playwright>=1.58.0",
+    "pytest>=9.0.3",
+    "ruff>=0.15.11",
+    "ty>=0.0.31",
+]
 
 
 [build-system]

@@ -4,8 +4,8 @@ This repo contains a direct Python scraper for archiving the Behind the Bastards
 
 The script:
 - pages through the podcast API until it has the full episode list
-- writes each raw episode payload to `episodes/<episode_id>.json`
-- fetches episode transcripts when available and writes them to `transcripts/<episode_id>.srt.zst`
+- writes each raw episode payload to `episodes/<episode_id>.json` in a serial metadata pass
+- refreshes available transcripts in a separate parallel pass and writes them to `transcripts/<episode_id>.srt.zst`
 - refreshes files only when the upstream content changes
 
 ## Usage
@@ -43,10 +43,21 @@ The image includes the archived `episodes/` and `transcripts/` directories, so t
 Start the local browser app with:
 
 ```bash
-uv run uvicorn btb_browser.web:app --reload
+uv run behind-the-bastards --debug
 ```
 
 Then open <http://127.0.0.1:8000>.
+
+The browser command accepts:
+- `--host` to change the bind address
+- `--port` to change the listen port
+- `--debug` to enable Uvicorn reload mode with debug logging
+
+Install the WebKit browser runtime once before running the browser smoke tests:
+
+```bash
+uv run playwright install webkit
+```
 
 Behavior:
 - the homepage loads the archive into memory once at startup
@@ -54,6 +65,12 @@ Behavior:
 - search matches episode metadata, raw archived JSON string values, and transcript text
 - search results switch to relevance ordering when `q` is present
 - episode detail pages show the full transcript when a `.srt.zst` file exists
+
+Run the full test suite, including the WebKit smoke tests, with:
+
+```bash
+uv run pytest
+```
 
 Migrate existing transcript files with:
 
@@ -69,7 +86,12 @@ uv run python scripts/migrate_transcripts_to_zstd.py
 
 ## Rerun Behavior
 
-The scraper compares fetched content with existing files and only rewrites files whose contents changed. Unchanged episode and transcript files are left alone.
+The scraper refreshes in two phases:
+
+- a serial metadata pass that pages the iHeart API and updates `episodes/`
+- a bounded parallel transcript pass that refreshes transcript-capable episodes concurrently
+
+Fetched content is still compared with the existing files, and only files whose contents changed are rewritten. Unchanged episode and transcript files are left alone.
 
 ## Transcript Caveat
 

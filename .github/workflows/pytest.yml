@@ -17,6 +17,9 @@ jobs:
         with:
           activate-environment: "true"
           github-token: ${{ github.token }}
+      - name: Install Playwright WebKit
+        run: |
+          uv run playwright install --with-deps webkit
       - name: Running pytest
         run: |
           uv run pytest

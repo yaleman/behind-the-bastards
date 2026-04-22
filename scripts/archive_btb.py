@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import re
 import sys
 from html import unescape
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -15,12 +16,23 @@ PODCAST_ID = 29236323
 PODCAST_SLUG = "105-behind-the-bastards-29236323"
 EPISODE_API_URL = f"https://au.api.iheart.com/api/v3/podcast/podcasts/{PODCAST_ID}/episodes"
 EPISODE_LIMIT = 100
+DEFAULT_TRANSCRIPT_WORKERS = 16
 TRANSCRIPT_URL_PATTERN = re.compile(
     r"https://api\.omny\.fm/[^\"']+/transcript\?format=SubRip[^\"']*"
 )
 DEFAULT_HEADERS = {
     "User-Agent": "behind-the-bastards-archiver/0.1",
 }
+
+
+class TranscriptJob(NamedTuple):
+    episode_id: int
+
+
+class TranscriptResult(NamedTuple):
+    episode_id: int
+    status: str
+    warning: str | None = None
 
 
 def build_episode_api_url(page_key: str | None = None, limit: int = EPISODE_LIMIT) -> str:
@@ -116,46 +128,83 @@ def extract_transcript_url(html: str) -> str | None:
     return unescape(match.group(0))
 
 
-def archive_episode(
+def archive_metadata_episode(
     episode: dict[str, Any],
     episodes_dir: Path,
-    transcripts_dir: Path,
-    fetch_text: Callable[[str], str] = fetch_text_url,
-    counters: dict[str, int] | None = None,
-    warn: Callable[[str], None] | None = None,
+    counters: dict[str, int],
+    transcript_jobs: list[TranscriptJob],
 ) -> dict[str, str]:
-    if counters is None:
-        counters = make_counters()
-    if warn is None:
-        warn = default_warn
-
     episode_id = episode["id"]
     episode_path = episodes_dir / f"{episode_id}.json"
     episode_status = write_text_if_changed(episode_path, serialize_json(episode))
     counters[f"episodes_{episode_status}"] += 1
 
-    transcript_status = "missing"
-    if not episode.get("transcriptionAvailable"):
+    if episode.get("transcriptionAvailable"):
+        transcript_jobs.append(TranscriptJob(episode_id=episode_id))
+        transcript_status = "queued"
+    else:
         counters["transcripts_missing"] += 1
-        return {"episode": episode_status, "transcript": transcript_status}
+        transcript_status = "missing"
 
+    return {"episode": episode_status, "transcript": transcript_status}
+
+
+def refresh_transcript_job(
+    job: TranscriptJob,
+    transcripts_dir: Path,
+    fetch_text: Callable[[str], str] = fetch_text_url,
+) -> TranscriptResult:
     try:
-        html = fetch_text(episode_page_url(episode_id))
+        html = fetch_text(episode_page_url(job.episode_id))
         transcript_url = extract_transcript_url(html)
         if transcript_url is None:
-            counters["transcripts_missing"] += 1
-            warn(f"episode {episode_id}: transcript link not found")
-            return {"episode": episode_status, "transcript": transcript_status}
+            return TranscriptResult(
+                episode_id=job.episode_id,
+                status="missing",
+                warning=f"episode {job.episode_id}: transcript link not found",
+            )
 
         transcript_text = fetch_text(transcript_url)
-        transcript_path = transcript_storage_path(transcripts_dir, episode_id)
+        transcript_path = transcript_storage_path(transcripts_dir, job.episode_id)
         transcript_status = write_transcript_text_if_changed(transcript_path, transcript_text)
-        counters[f"transcripts_{transcript_status}"] += 1
-        return {"episode": episode_status, "transcript": transcript_status}
+        return TranscriptResult(episode_id=job.episode_id, status=transcript_status)
     except Exception as exc:
-        counters["transcripts_failed"] += 1
-        warn(f"episode {episode_id}: transcript fetch failed: {exc}")
-        return {"episode": episode_status, "transcript": "failed"}
+        return TranscriptResult(
+            episode_id=job.episode_id,
+            status="failed",
+            warning=f"episode {job.episode_id}: transcript fetch failed: {exc}",
+        )
+
+
+def refresh_transcripts(
+    transcript_jobs: list[TranscriptJob],
+    transcripts_dir: Path,
+    counters: dict[str, int],
+    fetch_text: Callable[[str], str],
+    warn: Callable[[str], None],
+    max_transcript_workers: int,
+) -> None:
+    if not transcript_jobs:
+        return
+
+    max_workers = max(1, max_transcript_workers)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_job = {
+            executor.submit(
+                refresh_transcript_job,
+                job,
+                transcripts_dir,
+                fetch_text,
+            ): job
+            for job in transcript_jobs
+        }
+
+        for future in as_completed(future_to_job):
+            result = future.result()
+            counters[f"transcripts_{result.status}"] += 1
+            if result.warning is not None:
+                warn(result.warning)
+            print(f"Transcript {result.episode_id}: {result.status}")
 
 
 def default_warn(message: str) -> None:
@@ -168,9 +217,11 @@ def archive_all(
     fetch_json: Callable[[str], dict[str, Any]] = fetch_json_url,
     fetch_text: Callable[[str], str] = fetch_text_url,
     warn: Callable[[str], None] = default_warn,
+    max_transcript_workers: int = DEFAULT_TRANSCRIPT_WORKERS,
 ) -> dict[str, int]:
     counters = make_counters()
     page_count = 0
+    transcript_jobs: list[TranscriptJob] = []
 
     def fetch_page(page_key: str | None) -> dict[str, Any]:
         nonlocal page_count
@@ -179,18 +230,25 @@ def archive_all(
         return fetch_episode_page(page_key, fetch_json=fetch_json)
 
     for index, episode in enumerate(iter_episodes(fetch_page), start=1):
-        result = archive_episode(
+        result = archive_metadata_episode(
             episode=episode,
             episodes_dir=episodes_dir,
-            transcripts_dir=transcripts_dir,
-            fetch_text=fetch_text,
             counters=counters,
-            warn=warn,
+            transcript_jobs=transcript_jobs,
         )
         print(
             f"Episode {index}: {episode['id']} "
             f"(episode={result['episode']}, transcript={result['transcript']})"
         )
+
+    refresh_transcripts(
+        transcript_jobs=transcript_jobs,
+        transcripts_dir=transcripts_dir,
+        counters=counters,
+        fetch_text=fetch_text,
+        warn=warn,
+        max_transcript_workers=max_transcript_workers,
+    )
 
     print("Summary:")
     for key, value in counters.items():

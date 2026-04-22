@@ -33,13 +33,7 @@ def write_episode(path: Path, episode_id: int, **overrides):
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_archive_episode_writes_zstd_transcript_file(tmp_path):
-    episode = {
-        "id": 329558837,
-        "title": "Part Four: The Phil Spector Episodes",
-        "transcriptionAvailable": True,
-    }
-
+def test_refresh_transcript_job_writes_zstd_transcript_file(tmp_path):
     def fake_fetch_text(url):
         if url.endswith("/#transcription"):
             return (
@@ -48,14 +42,13 @@ def test_archive_episode_writes_zstd_transcript_file(tmp_path):
             )
         return "1\n00:00:00,000 --> 00:00:01,000\nTranscript body\n"
 
-    result = archive_btb.archive_episode(
-        episode=episode,
-        episodes_dir=tmp_path / "episodes",
+    result = archive_btb.refresh_transcript_job(
+        job=archive_btb.TranscriptJob(episode_id=329558837),
         transcripts_dir=tmp_path / "transcripts",
         fetch_text=fake_fetch_text,
     )
 
-    assert result["transcript"] == "new"
+    assert result.status == "new"
     assert not (tmp_path / "transcripts" / "329558837.srt").exists()
     assert (tmp_path / "transcripts" / "329558837.srt.zst").exists()
 

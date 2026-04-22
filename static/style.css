@@ -1,12 +1,14 @@
 :root {
   color-scheme: light;
-  --bg: #f4efe6;
-  --panel: #fffaf3;
-  --panel-border: #d8cbb8;
-  --text: #241c16;
-  --muted: #6e6256;
-  --accent: #8e4b2f;
-  --accent-strong: #6f331b;
+  --bg: #f6f2f4;
+  --panel: rgba(255, 255, 255, 0.97);
+  --panel-border: #dacfd5;
+  --text: #171214;
+  --muted: #655660;
+  --accent: #6c1026;
+  --accent-strong: #4d0b1b;
+  --accent-soft: #f4dfe6;
+  --line: rgba(19, 14, 17, 0.08);
 }
 
 * {
@@ -20,20 +22,28 @@ body {
 }
 
 body {
-  background: linear-gradient(180deg, #f7f1e7 0%, #efe3d4 100%);
+  background:
+    linear-gradient(180deg, rgba(108, 16, 38, 0.08) 0%, rgba(108, 16, 38, 0) 16rem),
+    linear-gradient(180deg, #fffdfd 0%, #f4edf0 100%);
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
 }
 
 a {
-  color: inherit;
+  color: var(--accent);
+  text-decoration-color: rgba(108, 16, 38, 0.35);
+  text-underline-offset: 0.14em;
+}
+
+a:hover {
+  color: var(--accent-strong);
 }
 
 .shell {
-  max-width: 920px;
+  width: min(100%, 54rem);
   margin: 0 auto;
-  padding: 2rem 1rem 3rem;
+  padding: clamp(1.25rem, 3vw, 2.75rem) clamp(1rem, 4vw, 2.5rem) 3rem;
 }
 
 .topbar {
@@ -75,6 +85,7 @@ input[type="search"] {
   border-radius: 0.9rem;
   background: var(--panel);
   color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
   font: inherit;
 }
 
@@ -82,8 +93,9 @@ button {
   padding: 0.85rem 1.1rem;
   border: 1px solid var(--accent);
   border-radius: 0.9rem;
-  background: var(--accent);
+  background: linear-gradient(180deg, #7d1730 0%, var(--accent) 100%);
   color: #fff;
+  box-shadow: 0 0.75rem 1.5rem rgba(108, 16, 38, 0.14);
   font: inherit;
   cursor: pointer;
 }
@@ -104,12 +116,22 @@ button:hover {
   gap: 0.85rem;
 }
 
+.episode-list > * {
+  min-width: 0;
+}
+
 .episode-card,
 .detail-card {
-  background: rgba(255, 250, 243, 0.96);
+  background: var(--panel);
   border: 1px solid var(--panel-border);
-  border-radius: 1rem;
-  padding: 1rem;
+  border-radius: 1.1rem;
+  padding: 1.2rem;
+  box-shadow: 0 1.1rem 2.4rem rgba(23, 18, 20, 0.06);
+}
+
+.episode-card,
+.episode-card > * {
+  min-width: 0;
 }
 
 .episode-title {
@@ -136,6 +158,14 @@ button:hover {
   margin: 0.65rem 0 0;
 }
 
+.episode-description,
+.episode-description p,
+.episode-description li,
+.episode-description a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .detail {
   display: grid;
   gap: 1rem;
@@ -153,7 +183,6 @@ button:hover {
   margin-top: 1.25rem;
 }
 
-.detail-state,
 .raw-metadata {
   margin-top: 1rem;
 }
@@ -178,8 +207,8 @@ button:hover {
 
 .transcript-cue {
   padding: 0.55rem 0.75rem;
-  background: #f8f2e8;
-  border: 1px solid var(--panel-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 239, 242, 0.98));
+  border: 1px solid var(--line);
   border-radius: 0.9rem;
 }
 
@@ -222,33 +251,33 @@ button:hover {
 }
 
 .speaker-color-1 {
-  color: #7a271a;
-  background: #f9d8cb;
+  color: #5f0d21;
+  background: #f6dbe3;
 }
 
 .speaker-color-2 {
-  color: #0f5f66;
-  background: #d7f0f2;
+  color: #1f1a1d;
+  background: #e4dde1;
 }
 
 .speaker-color-3 {
-  color: #5c3f0d;
-  background: #f6e3bd;
+  color: #4e163f;
+  background: #eedcf0;
 }
 
 .speaker-color-4 {
-  color: #204d2a;
-  background: #d7ecd7;
+  color: #6d1e17;
+  background: #f5ddd8;
 }
 
 .speaker-color-5 {
-  color: #5a275f;
-  background: #f0d8f4;
+  color: #3c2638;
+  background: #e9dfe7;
 }
 
 .speaker-color-6 {
-  color: #1b456e;
-  background: #d8e9fb;
+  color: #7a1233;
+  background: #f4dbe5;
 }
 
 pre {
@@ -256,7 +285,7 @@ pre {
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  background: #f8f2e8;
+  background: linear-gradient(180deg, #fffefe 0%, #f5eef1 100%);
   border: 1px solid var(--panel-border);
   border-radius: 0.9rem;
   padding: 1rem;
@@ -266,6 +295,15 @@ pre {
   display: grid;
   gap: 0.75rem;
   margin: 0;
+}
+
+.raw-metadata summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.raw-metadata[open] summary {
+  margin-bottom: 1rem;
 }
 
 .raw-metadata div {
@@ -301,7 +339,8 @@ pre {
 
 @media (max-width: 640px) {
   .shell {
-    padding-inline: 0.75rem;
+    width: 100%;
+    padding-inline: 0.8rem;
   }
 
   .episode-card,

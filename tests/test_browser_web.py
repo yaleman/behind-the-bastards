@@ -165,7 +165,8 @@ def test_detail_page_renders_transcript_text(tmp_path):
 
     assert response.status_code == 200
     assert "1:00:00" in response.text
-    assert "Transcript available" in response.text
+    assert "Transcript status" not in response.text
+    assert "Transcript available" not in response.text
     assert 'class="transcript-cue"' in response.text
     assert 'class="transcript-cue-line"' in response.text
     assert "00:00" in response.text
@@ -275,7 +276,10 @@ def test_detail_page_shows_absent_transcript_state_and_raw_metadata(tmp_path):
 
     assert response.status_code == 200
     assert "No transcript text available." in response.text
-    assert "Transcript unavailable" in response.text
+    assert '<details class="raw-metadata">' in response.text
+    assert "<summary>Raw metadata</summary>" in response.text
+    assert "Transcript status" not in response.text
+    assert "Transcript unavailable" not in response.text
     assert "guests" in response.text
 
 
@@ -358,5 +362,6 @@ def test_detail_page_repairs_malformed_description_html(tmp_path):
     assert response.status_code == 200
     assert 'href="https://example.com/good"' in response.text
     assert '<a href="https://example.com/broken' not in response.text
-    assert "Transcript available" in response.text
+    assert "Transcript status" not in response.text
+    assert "Transcript available" not in response.text
     assert "Speaker 1: Hello" in response.text

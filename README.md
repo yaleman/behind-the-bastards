@@ -81,3 +81,7 @@ Pushes to `main` trigger `.github/workflows/publish-container.yml`, which uses D
 
 - `ghcr.io/<owner>/<repo>:latest`
 - `ghcr.io/<owner>/<repo>:sha-<short-commit>`
+
+## Scheduled Archive Updates
+
+`.github/workflows/update-dataset.yml` runs every day at `00:00 UTC` and on manual dispatch. It refreshes the archive with `scripts/archive_btb.py` and commits any changed `episodes/` or `transcripts/` files back to `main`.

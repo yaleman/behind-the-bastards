@@ -141,6 +141,10 @@ button:hover {
   gap: 1rem;
 }
 
+.detail > * {
+  min-width: 0;
+}
+
 .back-link {
   margin: 0;
 }
@@ -152,6 +156,14 @@ button:hover {
 .detail-state,
 .raw-metadata {
   margin-top: 1rem;
+}
+
+.detail-description,
+.detail-description p,
+.detail-description li,
+.detail-description a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .transcript h2 {

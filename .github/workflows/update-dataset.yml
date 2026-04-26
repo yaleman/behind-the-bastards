@@ -6,7 +6,9 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
+  pull-requests: write
 
 concurrency:
   group: update-dataset
@@ -36,14 +38,50 @@ jobs:
       - name: Update archive dataset
         run: uv run python scripts/archive_btb.py
 
-      - name: Commit updated archive
+      - name: Publish archive update pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPDATE_BRANCH: github-actions/update-dataset
+          PR_TITLE: Update podcast archive
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions-b2b@terminaloutcomes.com"
-          git add -A
+          git switch -C "$UPDATE_BRANCH"
+          git add -A episodes transcripts
+
           if git diff --cached --quiet; then
             echo "No archive changes to commit"
             exit 0
           fi
+
           git commit -m "Update podcast archive"
-          git push origin HEAD:main
+          git fetch origin "$UPDATE_BRANCH:refs/remotes/origin/$UPDATE_BRANCH" || true
+          git push --force-with-lease origin "$UPDATE_BRANCH"
+
+          pr_body="$RUNNER_TEMP/update-dataset-pr-body.md"
+          cat > "$pr_body" <<'EOF'
+          Automated archive refresh from `.github/workflows/update-dataset.yml`.
+
+          Updated files are limited to `episodes/` and `transcripts/`.
+          EOF
+
+          pr_url="$(gh pr list --state open --head "$UPDATE_BRANCH" --json url --jq '.[0].url')"
+          if [ -z "$pr_url" ]; then
+            pr_url="$(gh pr create --base main --head "$UPDATE_BRANCH" --title "$PR_TITLE" --body-file "$pr_body")"
+          else
+            gh pr edit "$pr_url" --title "$PR_TITLE" --body-file "$pr_body"
+          fi
+
+          for workflow in mypy.yml pylint.yml pytest.yml; do
+            gh workflow run "$workflow" --ref "$UPDATE_BRANCH"
+          done
+
+          if gh pr merge --auto --squash --delete-branch "$pr_url"; then
+            echo "Enabled auto-merge for $pr_url"
+          elif [ "$(gh pr view "$pr_url" --json autoMergeRequest --jq '.autoMergeRequest != null')" = "true" ]; then
+            echo "Auto-merge is already enabled for $pr_url"
+          else
+            exit 1
+          fi

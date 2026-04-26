@@ -99,7 +99,7 @@ Some episodes report transcript support, but the episode page may still fail to 
 
 ## Container Publishing
 
-Pushes to `main` trigger `.github/workflows/publish-container.yml`, which uses Docker's maintained reusable workflow from [`docker/github-builder`](https://github.com/docker/github-builder) to build and publish a multi-arch image for `linux/amd64` and `linux/arm64` to GHCR as:
+Pushes to `main` trigger `.github/workflows/publish-container.yml`, which builds and publishes a multi-arch image for `linux/amd64` and `linux/arm64` to GHCR as:
 
 - `ghcr.io/<owner>/<repo>:latest`
 - `ghcr.io/<owner>/<repo>:sha-<short-commit>`

@@ -6,9 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: update-dataset
@@ -19,10 +17,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate update token
+        env:
+          UPDATE_PAT: ${{ secrets.UPDATE_PAT }}
+        run: |
+          if [ -z "$UPDATE_PAT" ]; then
+            echo "UPDATE_PAT must be configured so archive update PRs trigger required checks."
+            exit 1
+          fi
+
       - name: Check out repository
         uses: actions/checkout@v6
         with:
           ref: main
+          token: ${{ secrets.UPDATE_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -40,7 +48,7 @@ jobs:
 
       - name: Publish archive update pull request
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.UPDATE_PAT }}
           UPDATE_BRANCH: github-actions/update-dataset
           PR_TITLE: Update podcast archive
         run: |
@@ -73,10 +81,6 @@ jobs:
           else
             gh pr edit "$pr_url" --title "$PR_TITLE" --body-file "$pr_body"
           fi
-
-          for workflow in mypy.yml pylint.yml pytest.yml; do
-            gh workflow run "$workflow" --ref "$UPDATE_BRANCH"
-          done
 
           if gh pr merge --auto --squash --delete-branch "$pr_url"; then
             echo "Enabled auto-merge for $pr_url"

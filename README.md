@@ -106,4 +106,6 @@ Pushes to `main` trigger `.github/workflows/publish-container.yml`, which builds
 
 ## Scheduled Archive Updates
 
-`.github/workflows/update-dataset.yml` runs every day at `00:00 UTC` and on manual dispatch. It refreshes the archive with `scripts/archive_btb.py`, pushes changed `episodes/` and `transcripts/` files to the `github-actions/update-dataset` branch, opens or updates an archive refresh pull request, dispatches the required check workflows for that branch, and enables squash auto-merge once those checks pass.
+`.github/workflows/update-dataset.yml` runs every day at `00:00 UTC` and on manual dispatch. It refreshes the archive with `scripts/archive_btb.py`, pushes changed `episodes/` and `transcripts/` files to the `github-actions/update-dataset` branch, opens or updates an archive refresh pull request, and enables squash auto-merge once the required pull request checks pass.
+
+The workflow requires an `UPDATE_PAT` repository secret. Use a fine-grained personal access token with contents read/write and pull request read/write access to this repository. The workflow uses that token instead of the built-in `GITHUB_TOKEN` so GitHub triggers the normal pull request checks for archive update PRs.

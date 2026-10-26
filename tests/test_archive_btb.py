@@ -150,7 +150,10 @@ def test_refresh_transcript_job_returns_failed_on_exception(tmp_path):
 
     assert result.episode_id == 329558837
     assert result.status == "failed"
-    assert result.warning == "episode 329558837: transcript fetch failed: transcript unavailable"
+    assert (
+        result.warning
+        == "episode 329558837: transcript fetch failed: transcript unavailable"
+    )
 
 
 def test_archive_all_runs_metadata_then_parallel_transcripts(tmp_path):

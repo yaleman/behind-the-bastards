@@ -1,20 +1,26 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import re
 import sys
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
 from pathlib import Path
-from typing import Any, Callable, NamedTuple
+from typing import Any, NamedTuple
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from btb_browser.transcripts import transcript_storage_path, write_transcript_text_if_changed
+from btb_browser.transcripts import (
+    transcript_storage_path,
+    write_transcript_text_if_changed,
+)
 
 PODCAST_ID = 29236323
 PODCAST_SLUG = "105-behind-the-bastards-29236323"
-EPISODE_API_URL = f"https://au.api.iheart.com/api/v3/podcast/podcasts/{PODCAST_ID}/episodes"
+EPISODE_API_URL = (
+    f"https://au.api.iheart.com/api/v3/podcast/podcasts/{PODCAST_ID}/episodes"
+)
 EPISODE_LIMIT = 100
 DEFAULT_TRANSCRIPT_WORKERS = 16
 TRANSCRIPT_URL_PATTERN = re.compile(
@@ -35,7 +41,9 @@ class TranscriptResult(NamedTuple):
     warning: str | None = None
 
 
-def build_episode_api_url(page_key: str | None = None, limit: int = EPISODE_LIMIT) -> str:
+def build_episode_api_url(
+    page_key: str | None = None, limit: int = EPISODE_LIMIT
+) -> str:
     params = {
         "newEnabled": "false",
         "limit": str(limit),
@@ -166,9 +174,11 @@ def refresh_transcript_job(
 
         transcript_text = fetch_text(transcript_url)
         transcript_path = transcript_storage_path(transcripts_dir, job.episode_id)
-        transcript_status = write_transcript_text_if_changed(transcript_path, transcript_text)
+        transcript_status = write_transcript_text_if_changed(
+            transcript_path, transcript_text
+        )
         return TranscriptResult(episode_id=job.episode_id, status=transcript_status)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         return TranscriptResult(
             episode_id=job.episode_id,
             status="failed",
@@ -226,7 +236,9 @@ def archive_all(
     def fetch_page(page_key: str | None) -> dict[str, Any]:
         nonlocal page_count
         page_count += 1
-        print(f"Fetching page {page_count} ({'initial' if page_key is None else page_key})")
+        print(
+            f"Fetching page {page_count} ({'initial' if page_key is None else page_key})"
+        )
         return fetch_episode_page(page_key, fetch_json=fetch_json)
 
     for index, episode in enumerate(iter_episodes(fetch_page), start=1):

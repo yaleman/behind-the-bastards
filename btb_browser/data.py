@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 import math
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from btb_browser.transcripts import read_transcript_text
 
@@ -40,8 +41,12 @@ class EpisodeRecord:
 
 _WHITESPACE_RE = re.compile(r"\s+")
 _SRT_BLOCK_SPLIT_RE = re.compile(r"\n\s*\n")
-_SRT_TIME_RE = re.compile(r"^(?P<hours>\d{2}):(?P<minutes>\d{2}):(?P<seconds>\d{2})(?:[,\.](?P<millis>\d{3}))?$")
-_SPEAKER_PREFIX_RE = re.compile(r"^(?P<speaker>[A-Za-z][A-Za-z0-9 .&'()_-]{0,60}?):\s*(?P<text>.+)$")
+_SRT_TIME_RE = re.compile(
+    r"^(?P<hours>\d{2}):(?P<minutes>\d{2}):(?P<seconds>\d{2})(?:[,\.](?P<millis>\d{3}))?$"
+)
+_SPEAKER_PREFIX_RE = re.compile(
+    r"^(?P<speaker>[A-Za-z][A-Za-z0-9 .&'()_-]{0,60}?):\s*(?P<text>.+)$"
+)
 _SPEAKER_COLOR_CLASSES = (
     "speaker-color-1",
     "speaker-color-2",
@@ -116,7 +121,11 @@ def _normalize_start_date(value: Any) -> str:
     if isinstance(value, bool) or value is None:
         return ""
     if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        return (
+            datetime.fromtimestamp(value / 1000, tz=UTC)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
     if isinstance(value, str):
         return value
     return str(value)
@@ -180,7 +189,9 @@ def parse_transcript_cues(transcript_text: str) -> list[TranscriptCue]:
         if speaker_name is not None:
             speaker_color_class = speaker_colors.setdefault(
                 speaker_name,
-                _SPEAKER_COLOR_CLASSES[len(speaker_colors) % len(_SPEAKER_COLOR_CLASSES)],
+                _SPEAKER_COLOR_CLASSES[
+                    len(speaker_colors) % len(_SPEAKER_COLOR_CLASSES)
+                ],
             )
 
         if cues and speaker_name is not None:
@@ -202,7 +213,9 @@ def parse_transcript_cues(transcript_text: str) -> list[TranscriptCue]:
     return cues
 
 
-def normalize_episode(raw_episode: dict[str, Any], transcript_text: str) -> EpisodeRecord:
+def normalize_episode(
+    raw_episode: dict[str, Any], transcript_text: str
+) -> EpisodeRecord:
     transcript_cues = parse_transcript_cues(transcript_text)
     return EpisodeRecord(
         id=int(raw_episode["id"]),
@@ -265,7 +278,9 @@ def _match_count(text: str, terms: list[str]) -> int:
     return sum(1 for term in terms if term in lowered)
 
 
-def _ranking_key(record: EpisodeRecord, terms: list[str]) -> tuple[int, int, int, int, str, int]:
+def _ranking_key(
+    record: EpisodeRecord, terms: list[str]
+) -> tuple[int, int, int, int, str, int]:
     return (
         _match_count(record.title, terms),
         _match_count(record.description, terms),
@@ -290,7 +305,9 @@ def search_records(records: Iterable[EpisodeRecord], query: str) -> list[Episode
     return matched
 
 
-def paginate_results(items: list[Any], page: int, page_size: int) -> tuple[list[Any], int]:
+def paginate_results(
+    items: list[Any], page: int, page_size: int
+) -> tuple[list[Any], int]:
     safe_page_size = max(page_size, 1)
     total_pages = max(math.ceil(len(items) / safe_page_size), 1)
     safe_page = max(page, 1)

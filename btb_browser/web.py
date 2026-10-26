@@ -13,7 +13,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
 
-from btb_browser.data import EpisodeRecord, load_archive, paginate_results, search_records
+from btb_browser.data import (
+    EpisodeRecord,
+    load_archive,
+    paginate_results,
+    search_records,
+)
 
 LOGGER = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
@@ -112,7 +117,9 @@ class _DescriptionHtmlRenderer(HTMLParser):
         return parsed.scheme in {"http", "https"}
 
 
-def _find_episode(records: list[EpisodeRecord], episode_id: int) -> EpisodeRecord | None:
+def _find_episode(
+    records: list[EpisodeRecord], episode_id: int
+) -> EpisodeRecord | None:
     for record in records:
         if record.id == episode_id:
             return record
@@ -164,7 +171,9 @@ def _pagination_window(current_page: int, total_pages: int) -> list[int | None]:
     return pages
 
 
-def _build_pagination_items(request: Request, *, page: int, total_pages: int, query: str) -> list[dict[str, object]]:
+def _build_pagination_items(
+    request: Request, *, page: int, total_pages: int, query: str
+) -> list[dict[str, object]]:
     items: list[dict[str, object]] = []
     for entry in _pagination_window(page, total_pages):
         if entry is None:
@@ -175,7 +184,9 @@ def _build_pagination_items(request: Request, *, page: int, total_pages: int, qu
                 "label": str(entry),
                 "is_gap": False,
                 "is_current": entry == page,
-                "url": "" if entry == page else _page_url(request, page=entry, query=query),
+                "url": ""
+                if entry == page
+                else _page_url(request, page=entry, query=query),
             }
         )
     return items
@@ -209,7 +220,9 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request, q: str = "", page: int = 1) -> HTMLResponse:
         filtered_records = search_records(records, q) if q else list(records)
-        page_records, total_pages = paginate_results(filtered_records, page=page, page_size=24)
+        page_records, total_pages = paginate_results(
+            filtered_records, page=page, page_size=24
+        )
         effective_page = max(1, min(page, total_pages))
         has_previous = effective_page > 1
         has_next = effective_page < total_pages
@@ -231,10 +244,20 @@ def create_app(
                 "has_previous": has_previous,
                 "has_next": has_next,
                 "pagination_items": pagination_items,
-                "first_page_url": _page_url(request, page=1, query=q) if has_previous else "",
-                "last_page_url": _page_url(request, page=total_pages, query=q) if has_next else "",
-                "previous_page_url": _page_url(request, page=effective_page - 1, query=q) if has_previous else "",
-                "next_page_url": _page_url(request, page=effective_page + 1, query=q) if has_next else "",
+                "first_page_url": _page_url(request, page=1, query=q)
+                if has_previous
+                else "",
+                "last_page_url": _page_url(request, page=total_pages, query=q)
+                if has_next
+                else "",
+                "previous_page_url": _page_url(
+                    request, page=effective_page - 1, query=q
+                )
+                if has_previous
+                else "",
+                "next_page_url": _page_url(request, page=effective_page + 1, query=q)
+                if has_next
+                else "",
                 "format_duration": _format_duration,
                 "render_description_html": _render_description_html,
             },

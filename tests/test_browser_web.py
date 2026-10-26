@@ -23,7 +23,9 @@ def write_episode(path, episode_id, **overrides):
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_create_app_logs_before_and_after_initial_archive_load(tmp_path, monkeypatch, caplog):
+def test_create_app_logs_before_and_after_initial_archive_load(
+    tmp_path, monkeypatch, caplog
+):
     episodes_dir = tmp_path / "episodes"
     transcripts_dir = tmp_path / "transcripts"
     episodes_dir.mkdir()
@@ -135,8 +137,12 @@ def test_home_page_lists_newest_first_without_query(tmp_path):
     episodes_dir.mkdir()
     transcripts_dir.mkdir()
 
-    write_episode(episodes_dir / "1.json", 1, title="Older", startDate="2025-01-01T00:00:00Z")
-    write_episode(episodes_dir / "2.json", 2, title="Newer", startDate="2026-01-01T00:00:00Z")
+    write_episode(
+        episodes_dir / "1.json", 1, title="Older", startDate="2025-01-01T00:00:00Z"
+    )
+    write_episode(
+        episodes_dir / "2.json", 2, title="Newer", startDate="2026-01-01T00:00:00Z"
+    )
 
     client = TestClient(create_app(tmp_path))
     response = client.get("/")
@@ -246,7 +252,7 @@ def test_detail_page_renders_speaker_labels_with_color_classes(tmp_path):
         description="metadata",
         transcriptionAvailable=True,
     )
-    transcript_text = "\n".join(
+    transcript_text = "\n".join(  # noqa: FLY002
         [
             "1",
             "00:00:01,000 --> 00:00:02,000",
@@ -352,7 +358,7 @@ def test_detail_page_renders_description_html_in_metadata(tmp_path):
         13,
         title="Metadata HTML Episode",
         description=(
-            '<p>Clean metadata text.</p>'
+            "<p>Clean metadata text.</p>"
             '<p>See <a href="https://example.com/info">example.com/info</a></p>'
         ),
     )
@@ -378,7 +384,7 @@ def test_home_page_renders_description_html(tmp_path):
         12,
         title="HTML Description Episode",
         description=(
-            '<p>Robert and Jamie conclude the story.</p>'
+            "<p>Robert and Jamie conclude the story.</p>"
             '<p><a href="https://example.com">https://example.com</a></p>'
             '<p>See <a href="https://omnystudio.com/listener">omnystudio.com/listener</a> '
             "for privacy information.</p>"
@@ -412,7 +418,9 @@ def test_detail_page_repairs_malformed_description_html(tmp_path):
         ),
         transcriptionAvailable=True,
     )
-    transcript_storage_path(transcripts_dir, 217093069).write_bytes(compress_text("Speaker 1: Hello"))
+    transcript_storage_path(transcripts_dir, 217093069).write_bytes(
+        compress_text("Speaker 1: Hello")
+    )
 
     client = TestClient(create_app(tmp_path))
     response = client.get("/episodes/217093069")

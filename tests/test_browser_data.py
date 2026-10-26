@@ -1,9 +1,14 @@
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import btb_browser.data as browser_data
-from btb_browser.data import load_archive, paginate_results, parse_transcript_cues, search_records
+from btb_browser.data import (
+    load_archive,
+    paginate_results,
+    parse_transcript_cues,
+    search_records,
+)
 
 
 def write_episode(path, episode_id, **overrides):
@@ -32,7 +37,11 @@ def test_load_archive_normalizes_epoch_start_date_to_iso_string(tmp_path):
 
     records = load_archive(episodes_dir, transcripts_dir)
 
-    expected = datetime.fromtimestamp(start_date_ms / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+    expected = (
+        datetime.fromtimestamp(start_date_ms / 1000, tz=UTC)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
     assert records[0].start_date == expected
     assert isinstance(records[0].start_date, str)
 
@@ -118,7 +127,9 @@ def test_load_archive_loads_episodes_serially(tmp_path, monkeypatch):
     assert len(thread_ids) == 1
 
 
-def test_search_records_keeps_title_hits_ahead_of_larger_lower_priority_matches(tmp_path):
+def test_search_records_keeps_title_hits_ahead_of_larger_lower_priority_matches(
+    tmp_path,
+):
     episodes_dir = tmp_path / "episodes"
     transcripts_dir = tmp_path / "transcripts"
     episodes_dir.mkdir()
@@ -237,7 +248,7 @@ def test_paginate_results_handles_nonpositive_page_size():
 
 def test_parse_transcript_cues_extracts_speaker_and_compact_time():
     cues = parse_transcript_cues(
-        "\n".join(
+        "\n".join(  # noqa: FLY002
             [
                 "1",
                 "00:00:05,200 --> 00:00:07,000",
@@ -261,7 +272,7 @@ def test_parse_transcript_cues_extracts_speaker_and_compact_time():
 
 def test_parse_transcript_cues_reuses_color_for_repeat_speakers_in_first_seen_order():
     cues = parse_transcript_cues(
-        "\n".join(
+        "\n".join(  # noqa: FLY002
             [
                 "1",
                 "00:00:01,000 --> 00:00:02,000",
@@ -288,7 +299,7 @@ def test_parse_transcript_cues_reuses_color_for_repeat_speakers_in_first_seen_or
 
 def test_parse_transcript_cues_collapses_consecutive_cues_from_same_speaker():
     cues = parse_transcript_cues(
-        "\n".join(
+        "\n".join(  # noqa: FLY002
             [
                 "1",
                 "00:00:01,000 --> 00:00:02,000",
@@ -317,7 +328,7 @@ def test_parse_transcript_cues_collapses_consecutive_cues_from_same_speaker():
 
 def test_parse_transcript_cues_handles_missing_speaker_and_skips_bad_blocks():
     cues = parse_transcript_cues(
-        "\n".join(
+        "\n".join(  # noqa: FLY002
             [
                 "1",
                 "00:00:01,000 --> 00:00:02,000",

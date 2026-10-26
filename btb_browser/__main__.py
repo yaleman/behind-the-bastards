@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import argparse
-from copy import deepcopy
 from collections.abc import Sequence
+from copy import deepcopy
 
 import uvicorn
 from uvicorn.config import LOGGING_CONFIG

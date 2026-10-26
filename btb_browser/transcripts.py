@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import compression.zstd as zstd
+from compression import zstd
 from pathlib import Path
 
 TRANSCRIPT_SUFFIX = ".srt.zst"

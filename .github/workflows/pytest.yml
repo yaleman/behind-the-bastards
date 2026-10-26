@@ -17,7 +17,7 @@ jobs:
         uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
       - name: Install Playwright WebKit
         run: |
-          uv run playwright install --with-deps webkit
+          mise exec -- playwright install --with-deps webkit
       - name: Running pytest
         run: |
           mise run test

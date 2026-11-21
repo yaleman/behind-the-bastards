@@ -15,9 +15,6 @@ jobs:
       - uses: actions/checkout@v7
       - name: Set up mise toolchain
         uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
-      - name: Install Playwright WebKit
+      - name: Install and test
         run: |
-          mise exec -- playwright install --with-deps webkit
-      - name: Running pytest
-        run: |
-          mise run test
+          mise run install_and_test
